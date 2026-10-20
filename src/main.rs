@@ -3,6 +3,9 @@ mod tracer;
 use std::env;
 use std::process;
 
+use nix::sys::wait::waitpid;
+use nix::unistd::Pid;
+
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
 
@@ -19,5 +22,12 @@ fn main() {
         }
     };
 
-    println!("spawned traced child with pid {}", child.id());
+    let pid = Pid::from_raw(child.id() as i32);
+    match waitpid(pid, None) {
+        Ok(status) => println!("wait status: {status:?}"),
+        Err(error) => {
+            eprintln!("scully: waitpid failed: {error}");
+            process::exit(1);
+        }
+    }
 }
