@@ -56,10 +56,19 @@ fn main() {
                 process::exit(1);
             }
         };
-        println!("wait status: {status:?}");
 
-        if matches!(status, WaitStatus::Exited(..) | WaitStatus::Signaled(..)) {
-            break;
+        match status {
+            WaitStatus::PtraceSyscall(_) => {
+                match ptrace::getregs(pid) {
+                    Ok(regs) => println!("syscall {}", regs.orig_rax),
+                    Err(error) => {
+                        eprintln!("scully: getregs failed: {error}");
+                        process::exit(1);
+                    }
+                }
+            }
+            WaitStatus::Exited(..) | WaitStatus::Signaled(..) => break,
+            _ => println!("wait status: {status:?}"),
         }
     }
 }
