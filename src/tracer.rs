@@ -6,6 +6,8 @@ use nix::sys::ptrace::{self, Options};
 use nix::sys::wait::{WaitStatus, waitpid};
 use nix::unistd::Pid;
 
+use crate::regs;
+
 pub fn spawn_traced(cmd: &str, cmd_args: &[String]) -> io::Result<Child> {
     let mut command = Command::new(cmd);
     command.args(cmd_args);
@@ -41,12 +43,12 @@ pub fn run(child: &Child) -> io::Result<i32> {
             WaitStatus::PtraceSyscall(_) => {
                 in_syscall = !in_syscall;
 
-                let regs = ptrace::getregs(pid)?;
+                let syscall = regs::read(pid)?;
 
                 if in_syscall {
-                    println!("enter syscall {}", regs.orig_rax);
+                    println!("enter syscall {}", syscall.nr);
                 } else {
-                    println!("exit syscall {} = {}", regs.orig_rax, regs.rax as i64);
+                    println!("exit syscall {} = {}", syscall.nr, syscall.ret);
                 }
             }
             WaitStatus::Exited(_, code) => return Ok(code),

@@ -1,3 +1,4 @@
+mod regs;
 mod tracer;
 
 use std::env;
