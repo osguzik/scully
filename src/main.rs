@@ -43,6 +43,8 @@ fn main() {
         process::exit(1);
     }
 
+    let mut in_syscall = false;
+
     loop {
         if let Err(error) = ptrace::syscall(pid, None) {
             eprintln!("scully: resume failed: {error}");
@@ -59,12 +61,20 @@ fn main() {
 
         match status {
             WaitStatus::PtraceSyscall(_) => {
-                match ptrace::getregs(pid) {
-                    Ok(regs) => println!("syscall {}", regs.orig_rax),
+                in_syscall = !in_syscall;
+
+                let regs = match ptrace::getregs(pid) {
+                    Ok(regs) => regs,
                     Err(error) => {
                         eprintln!("scully: getregs failed: {error}");
                         process::exit(1);
                     }
+                };
+
+                if in_syscall {
+                    println!("enter syscall {}", regs.orig_rax);
+                } else {
+                    println!("exit syscall {} = {}", regs.orig_rax, regs.rax as i64);
                 }
             }
             WaitStatus::Exited(..) | WaitStatus::Signaled(..) => break,
