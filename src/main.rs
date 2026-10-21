@@ -3,11 +3,6 @@ mod tracer;
 use std::env;
 use std::process;
 
-use nix::sys::ptrace;
-use nix::sys::ptrace::Options;
-use nix::sys::wait::{waitpid, WaitStatus};
-use nix::unistd::Pid;
-
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
 
@@ -24,61 +19,11 @@ fn main() {
         }
     };
 
-    let pid = Pid::from_raw(child.id() as i32);
-
-    match waitpid(pid, None) {
-        Ok(WaitStatus::Stopped(..)) => {}
-        Ok(status) => {
-            eprintln!("scully: expected initial stop, got: {status:?}");
-            process::exit(1);
-        }
+    match tracer::run(&child) {
+        Ok(code) => process::exit(code),
         Err(error) => {
-            eprintln!("scully: waitpid failed: {error}");
+            eprintln!("scully: {error}");
             process::exit(1);
-        }
-    }
-
-    if let Err(error) = ptrace::setoptions(pid, Options::PTRACE_O_TRACESYSGOOD) {
-        eprintln!("scully: setoptions failed: {error}");
-        process::exit(1);
-    }
-
-    let mut in_syscall = false;
-
-    loop {
-        if let Err(error) = ptrace::syscall(pid, None) {
-            eprintln!("scully: resume failed: {error}");
-            process::exit(1);
-        }
-
-        let status = match waitpid(pid, None) {
-            Ok(status) => status,
-            Err(error) => {
-                eprintln!("scully: waitpid failed: {error}");
-                process::exit(1);
-            }
-        };
-
-        match status {
-            WaitStatus::PtraceSyscall(_) => {
-                in_syscall = !in_syscall;
-
-                let regs = match ptrace::getregs(pid) {
-                    Ok(regs) => regs,
-                    Err(error) => {
-                        eprintln!("scully: getregs failed: {error}");
-                        process::exit(1);
-                    }
-                };
-
-                if in_syscall {
-                    println!("enter syscall {}", regs.orig_rax);
-                } else {
-                    println!("exit syscall {} = {}", regs.orig_rax, regs.rax as i64);
-                }
-            }
-            WaitStatus::Exited(..) | WaitStatus::Signaled(..) => break,
-            _ => println!("wait status: {status:?}"),
         }
     }
 }

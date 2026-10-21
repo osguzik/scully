@@ -2,7 +2,9 @@ use std::io;
 use std::os::unix::process::CommandExt;
 use std::process::{Child, Command};
 
-use nix::sys::ptrace;
+use nix::sys::ptrace::{self, Options};
+use nix::sys::wait::{WaitStatus, waitpid};
+use nix::unistd::Pid;
 
 pub fn spawn_traced(cmd: &str, cmd_args: &[String]) -> io::Result<Child> {
     let mut command = Command::new(cmd);
@@ -14,4 +16,42 @@ pub fn spawn_traced(cmd: &str, cmd_args: &[String]) -> io::Result<Child> {
     }
 
     command.spawn()
+}
+
+pub fn run(child: &Child) -> io::Result<i32> {
+    let pid = Pid::from_raw(child.id() as i32);
+
+    match waitpid(pid, None)? {
+        WaitStatus::Stopped(..) => {}
+        status => {
+            return Err(io::Error::other(format!(
+                "expected initial stop, got: {status:?}"
+            )));
+        }
+    }
+
+    ptrace::setoptions(pid, Options::PTRACE_O_TRACESYSGOOD)?;
+
+    let mut in_syscall = false;
+
+    loop {
+        ptrace::syscall(pid, None)?;
+
+        match waitpid(pid, None)? {
+            WaitStatus::PtraceSyscall(_) => {
+                in_syscall = !in_syscall;
+
+                let regs = ptrace::getregs(pid)?;
+
+                if in_syscall {
+                    println!("enter syscall {}", regs.orig_rax);
+                } else {
+                    println!("exit syscall {} = {}", regs.orig_rax, regs.rax as i64);
+                }
+            }
+            WaitStatus::Exited(_, code) => return Ok(code),
+            WaitStatus::Signaled(_, signal, _) => return Ok(128 + signal as i32),
+            _ => {}
+        }
+    }
 }
