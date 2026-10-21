@@ -4,6 +4,7 @@ use std::env;
 use std::process;
 
 use nix::sys::ptrace;
+use nix::sys::ptrace::Options;
 use nix::sys::wait::{waitpid, WaitStatus};
 use nix::unistd::Pid;
 
@@ -25,7 +26,29 @@ fn main() {
 
     let pid = Pid::from_raw(child.id() as i32);
 
+    match waitpid(pid, None) {
+        Ok(WaitStatus::Stopped(..)) => {}
+        Ok(status) => {
+            eprintln!("scully: expected initial stop, got: {status:?}");
+            process::exit(1);
+        }
+        Err(error) => {
+            eprintln!("scully: waitpid failed: {error}");
+            process::exit(1);
+        }
+    }
+
+    if let Err(error) = ptrace::setoptions(pid, Options::PTRACE_O_TRACESYSGOOD) {
+        eprintln!("scully: setoptions failed: {error}");
+        process::exit(1);
+    }
+
     loop {
+        if let Err(error) = ptrace::syscall(pid, None) {
+            eprintln!("scully: resume failed: {error}");
+            process::exit(1);
+        }
+
         let status = match waitpid(pid, None) {
             Ok(status) => status,
             Err(error) => {
@@ -37,11 +60,6 @@ fn main() {
 
         if matches!(status, WaitStatus::Exited(..) | WaitStatus::Signaled(..)) {
             break;
-        }
-
-        if let Err(error) = ptrace::syscall(pid, None) {
-            eprintln!("scully: resume failed: {error}");
-            process::exit(1);
         }
     }
 }
