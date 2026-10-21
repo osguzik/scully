@@ -3,7 +3,8 @@ mod tracer;
 use std::env;
 use std::process;
 
-use nix::sys::wait::waitpid;
+use nix::sys::ptrace;
+use nix::sys::wait::{waitpid, WaitStatus};
 use nix::unistd::Pid;
 
 fn main() {
@@ -23,10 +24,23 @@ fn main() {
     };
 
     let pid = Pid::from_raw(child.id() as i32);
-    match waitpid(pid, None) {
-        Ok(status) => println!("wait status: {status:?}"),
-        Err(error) => {
-            eprintln!("scully: waitpid failed: {error}");
+
+    loop {
+        let status = match waitpid(pid, None) {
+            Ok(status) => status,
+            Err(error) => {
+                eprintln!("scully: waitpid failed: {error}");
+                process::exit(1);
+            }
+        };
+        println!("wait status: {status:?}");
+
+        if matches!(status, WaitStatus::Exited(..) | WaitStatus::Signaled(..)) {
+            break;
+        }
+
+        if let Err(error) = ptrace::syscall(pid, None) {
+            eprintln!("scully: resume failed: {error}");
             process::exit(1);
         }
     }
