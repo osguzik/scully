@@ -1,3 +1,4 @@
+mod mem;
 mod regs;
 mod syscall_info;
 mod tracer;
