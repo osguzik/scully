@@ -2,6 +2,7 @@ use std::io;
 use std::os::unix::process::CommandExt;
 use std::process::{Child, Command};
 
+use nix::errno::Errno;
 use nix::sys::ptrace::{self, Options};
 use nix::sys::signal::Signal;
 use nix::sys::wait::{WaitStatus, waitpid};
@@ -42,7 +43,10 @@ pub fn run(child: &Child) -> io::Result<i32> {
     let mut pending: Option<Signal> = None;
 
     loop {
-        ptrace::syscall(pid, pending.take())?;
+        match ptrace::syscall(pid, pending.take()) {
+            Ok(()) | Err(Errno::ESRCH) => {}
+            Err(error) => return Err(error.into()),
+        }
 
         match waitpid(pid, None)? {
             WaitStatus::PtraceSyscall(_) => {
