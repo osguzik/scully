@@ -58,7 +58,9 @@ pub fn run(child: &Child) -> io::Result<i32> {
 
                 match entry.take() {
                     None => entry = Some(syscall),
-                    Some(start) => eprintln!("{} = {}", format_call(&start), format_ret(syscall.ret)),
+                    Some(start) => {
+                        eprintln!("{} = {}", format_call(&start), format_ret(syscall.ret))
+                    }
                 }
             }
 
