@@ -11,6 +11,9 @@ use nix::unistd::Pid;
 use crate::regs::{self, RawSyscall};
 use crate::syscall_info;
 
+/// Linux reserves return values from -1 to -MAX_ERRNO for errors
+const MAX_ERRNO: i64 = 4095;
+
 pub fn spawn_traced(cmd: &str, cmd_args: &[String]) -> io::Result<Child> {
     let mut command = Command::new(cmd);
     command.args(cmd_args);
@@ -55,7 +58,7 @@ pub fn run(child: &Child) -> io::Result<i32> {
 
                 match entry.take() {
                     None => entry = Some(syscall),
-                    Some(start) => eprintln!("{} = {}", format_call(&start), syscall.ret),
+                    Some(start) => eprintln!("{} = {}", format_call(&start), format_ret(syscall.ret)),
                 }
             }
 
@@ -96,4 +99,13 @@ fn format_call(call: &RawSyscall) -> String {
 fn format_args(args: &[u64; 6]) -> String {
     let args: Vec<String> = args.iter().map(|arg| format!("{arg:#x}")).collect();
     args.join(", ")
+}
+
+fn format_ret(ret: i64) -> String {
+    if (-MAX_ERRNO..0).contains(&ret) {
+        let errno = Errno::from_raw(-ret as i32);
+        format!("-1 {errno:?} ({})", errno.desc())
+    } else {
+        ret.to_string()
+    }
 }
