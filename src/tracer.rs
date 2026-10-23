@@ -48,9 +48,9 @@ pub fn run(child: &Child) -> io::Result<i32> {
                 let syscall = regs::read(pid)?;
 
                 if in_syscall {
-                    println!("enter syscall {}", syscall.nr);
+                    eprintln!("enter syscall {}", syscall.nr);
                 } else {
-                    println!("exit syscall {} = {}", syscall.nr, syscall.ret);
+                    eprintln!("exit syscall {} = {}", syscall.nr, syscall.ret);
                 }
             }
             WaitStatus::Stopped(_, sig) => {
