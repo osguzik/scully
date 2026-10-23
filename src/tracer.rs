@@ -7,7 +7,7 @@ use nix::sys::signal::Signal;
 use nix::sys::wait::{WaitStatus, waitpid};
 use nix::unistd::Pid;
 
-use crate::regs;
+use crate::regs::{self, RawSyscall};
 
 pub fn spawn_traced(cmd: &str, cmd_args: &[String]) -> io::Result<Child> {
     let mut command = Command::new(cmd);
@@ -35,7 +35,7 @@ pub fn run(child: &Child) -> io::Result<i32> {
 
     ptrace::setoptions(pid, Options::PTRACE_O_TRACESYSGOOD | Options::PTRACE_O_TRACEEXEC)?;
 
-    let mut in_syscall = false;
+    let mut entry: Option<RawSyscall> = None;
     let mut pending: Option<Signal> = None;
 
     loop {
@@ -43,14 +43,14 @@ pub fn run(child: &Child) -> io::Result<i32> {
 
         match waitpid(pid, None)? {
             WaitStatus::PtraceSyscall(_) => {
-                in_syscall = !in_syscall;
-
                 let syscall = regs::read(pid)?;
 
-                if in_syscall {
-                    eprintln!("enter syscall {}", syscall.nr);
-                } else {
-                    eprintln!("exit syscall {} = {}", syscall.nr, syscall.ret);
+                match entry.take() {
+                    None => entry = Some(syscall),
+                    Some(start) => {
+                        let args: Vec<String> = start.args.iter().map(|arg| format!("{arg:#x}")).collect();
+                        eprintln!("syscall {}({}) = {}", start.nr, args.join(", "), start.ret);
+                    }
                 }
             }
             WaitStatus::Stopped(_, sig) => {
