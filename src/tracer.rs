@@ -33,7 +33,10 @@ pub fn run(child: &Child) -> io::Result<i32> {
         }
     }
 
-    ptrace::setoptions(pid, Options::PTRACE_O_TRACESYSGOOD | Options::PTRACE_O_TRACEEXEC)?;
+    ptrace::setoptions(
+        pid,
+        Options::PTRACE_O_TRACESYSGOOD | Options::PTRACE_O_TRACEEXEC,
+    )?;
 
     let mut entry: Option<RawSyscall> = None;
     let mut pending: Option<Signal> = None;
@@ -48,17 +51,43 @@ pub fn run(child: &Child) -> io::Result<i32> {
                 match entry.take() {
                     None => entry = Some(syscall),
                     Some(start) => {
-                        let args: Vec<String> = start.args.iter().map(|arg| format!("{arg:#x}")).collect();
-                        eprintln!("syscall {}({}) = {}", start.nr, args.join(", "), start.ret);
+                        eprintln!(
+                            "syscall {}({}) = {}",
+                            start.nr,
+                            format_args(&start.args),
+                            syscall.ret
+                        );
                     }
                 }
             }
+
             WaitStatus::Stopped(_, sig) => {
+                eprintln!("--- {sig:?} ---");
                 pending = Some(sig);
-            },
-            WaitStatus::Exited(_, code) => return Ok(code),
-            WaitStatus::Signaled(_, signal, _) => return Ok(128 + signal as i32),
+            }
+
+            WaitStatus::Exited(_, code) => {
+                if let Some(start) = entry {
+                    eprintln!("syscall {}({}) = ?", start.nr, format_args(&start.args));
+                }
+                eprintln!("+++ exited with {code} +++");
+                return Ok(code);
+            }
+
+            WaitStatus::Signaled(_, sig, _) => {
+                if let Some(start) = entry {
+                    eprintln!("syscall {}({}) = ?", start.nr, format_args(&start.args));
+                }
+                eprintln!("+++ killed by {sig:?} +++");
+                return Ok(128 + sig as i32);
+            }
+
             _ => {}
         }
     }
+}
+
+fn format_args(args: &[u64; 6]) -> String {
+    let args: Vec<String> = args.iter().map(|arg| format!("{arg:#x}")).collect();
+    args.join(", ")
 }
