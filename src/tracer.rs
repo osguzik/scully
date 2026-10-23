@@ -9,6 +9,7 @@ use nix::sys::wait::{WaitStatus, waitpid};
 use nix::unistd::Pid;
 
 use crate::regs::{self, RawSyscall};
+use crate::syscall_info;
 
 pub fn spawn_traced(cmd: &str, cmd_args: &[String]) -> io::Result<Child> {
     let mut command = Command::new(cmd);
@@ -54,14 +55,7 @@ pub fn run(child: &Child) -> io::Result<i32> {
 
                 match entry.take() {
                     None => entry = Some(syscall),
-                    Some(start) => {
-                        eprintln!(
-                            "syscall {}({}) = {}",
-                            start.nr,
-                            format_args(&start.args),
-                            syscall.ret
-                        );
-                    }
+                    Some(start) => eprintln!("{} = {}", format_call(&start), syscall.ret),
                 }
             }
 
@@ -72,7 +66,7 @@ pub fn run(child: &Child) -> io::Result<i32> {
 
             WaitStatus::Exited(_, code) => {
                 if let Some(start) = entry {
-                    eprintln!("syscall {}({}) = ?", start.nr, format_args(&start.args));
+                    eprintln!("{} = ?", format_call(&start));
                 }
                 eprintln!("+++ exited with {code} +++");
                 return Ok(code);
@@ -80,7 +74,7 @@ pub fn run(child: &Child) -> io::Result<i32> {
 
             WaitStatus::Signaled(_, sig, _) => {
                 if let Some(start) = entry {
-                    eprintln!("syscall {}({}) = ?", start.nr, format_args(&start.args));
+                    eprintln!("{} = ?", format_call(&start));
                 }
                 eprintln!("+++ killed by {sig:?} +++");
                 return Ok(128 + sig as i32);
@@ -89,6 +83,14 @@ pub fn run(child: &Child) -> io::Result<i32> {
             _ => {}
         }
     }
+}
+
+fn format_call(call: &RawSyscall) -> String {
+    format!(
+        "{}({})",
+        syscall_info::name(call.nr),
+        format_args(&call.args)
+    )
 }
 
 fn format_args(args: &[u64; 6]) -> String {

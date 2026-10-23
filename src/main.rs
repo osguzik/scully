@@ -1,4 +1,5 @@
 mod regs;
+mod syscall_info;
 mod tracer;
 
 use std::env;
