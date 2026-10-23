@@ -3,6 +3,7 @@ use std::os::unix::process::CommandExt;
 use std::process::{Child, Command};
 
 use nix::sys::ptrace::{self, Options};
+use nix::sys::signal::Signal;
 use nix::sys::wait::{WaitStatus, waitpid};
 use nix::unistd::Pid;
 
@@ -32,12 +33,13 @@ pub fn run(child: &Child) -> io::Result<i32> {
         }
     }
 
-    ptrace::setoptions(pid, Options::PTRACE_O_TRACESYSGOOD)?;
+    ptrace::setoptions(pid, Options::PTRACE_O_TRACESYSGOOD | Options::PTRACE_O_TRACEEXEC)?;
 
     let mut in_syscall = false;
+    let mut pending: Option<Signal> = None;
 
     loop {
-        ptrace::syscall(pid, None)?;
+        ptrace::syscall(pid, pending.take())?;
 
         match waitpid(pid, None)? {
             WaitStatus::PtraceSyscall(_) => {
@@ -51,6 +53,9 @@ pub fn run(child: &Child) -> io::Result<i32> {
                     println!("exit syscall {} = {}", syscall.nr, syscall.ret);
                 }
             }
+            WaitStatus::Stopped(_, sig) => {
+                pending = Some(sig);
+            },
             WaitStatus::Exited(_, code) => return Ok(code),
             WaitStatus::Signaled(_, signal, _) => return Ok(128 + signal as i32),
             _ => {}
