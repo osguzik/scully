@@ -3,6 +3,7 @@ use syscalls::Sysno;
 #[derive(Clone, Copy)]
 pub enum ArgKind {
     Hex,
+    Int,
     Str,
 }
 
@@ -17,10 +18,10 @@ pub fn arg_kinds(nr: u64) -> Option<&'static [ArgKind]> {
     use ArgKind::*;
 
     let kinds: &'static [ArgKind] = match Sysno::new(nr as usize)? {
-        Sysno::openat => &[Hex, Str, Hex, Hex],
-        Sysno::newfstatat => &[Hex, Str, Hex, Hex],
+        Sysno::openat => &[Int, Str, Hex, Hex],
+        Sysno::newfstatat => &[Int, Str, Hex, Hex],
         Sysno::access => &[Str, Hex],
-        Sysno::unlinkat => &[Hex, Str, Hex],
+        Sysno::unlinkat => &[Int, Str, Hex],
         _ => return None,
     };
 
