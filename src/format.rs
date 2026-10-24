@@ -38,6 +38,7 @@ fn arg(pid: Pid, kind: ArgKind, val: u64) -> String {
     match kind {
         ArgKind::Hex => format!("{val:#x}"),
         ArgKind::Int => (val as i32).to_string(),
+        ArgKind::UInt => val.to_string(),
         ArgKind::Str => match mem::read_string(pid, val) {
             Some(bytes) => format!("{:?}", String::from_utf8_lossy(&bytes)),
             None => format!("{val:#x}"),

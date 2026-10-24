@@ -4,6 +4,7 @@ use syscalls::Sysno;
 pub enum ArgKind {
     Hex,
     Int,
+    UInt,
     Str,
 }
 
@@ -18,10 +19,34 @@ pub fn arg_kinds(nr: u64) -> Option<&'static [ArgKind]> {
     use ArgKind::*;
 
     let kinds: &'static [ArgKind] = match Sysno::new(nr as usize)? {
-        Sysno::openat => &[Int, Str, Hex, Hex],
-        Sysno::newfstatat => &[Int, Str, Hex, Hex],
+        // files
         Sysno::access => &[Str, Hex],
-        Sysno::unlinkat => &[Int, Str, Hex],
+        Sysno::close => &[Int],
+        Sysno::fcntl => &[Int, Int, Hex],
+        Sysno::fstat => &[Int, Hex],
+        Sysno::getdents64 => &[Int, Hex, UInt],
+        Sysno::ioctl => &[Int, Hex, Hex],
+        Sysno::newfstatat => &[Int, Str, Hex, Hex],
+        Sysno::openat => &[Int, Str, Hex, Hex],
+        Sysno::pread64 => &[Int, Hex, UInt, UInt],
+        Sysno::read => &[Int, Hex, UInt],
+        Sysno::write => &[Int, Hex, UInt],
+
+        // memory
+        Sysno::brk => &[Hex],
+        Sysno::mmap => &[Hex, UInt, Hex, Hex, Int, Hex],
+        Sysno::mprotect => &[Hex, UInt, Hex],
+        Sysno::munmap => &[Hex, UInt],
+
+        // process
+        Sysno::arch_prctl => &[Hex, Hex],
+        Sysno::exit_group => &[Int],
+        Sysno::getrandom => &[Hex, UInt, Hex],
+        Sysno::prlimit64 => &[Int, Int, Hex, Hex],
+        Sysno::rseq => &[Hex, UInt, Hex, Hex],
+        Sysno::set_robust_list => &[Hex, UInt],
+        Sysno::set_tid_address => &[Hex],
+
         _ => return None,
     };
 
