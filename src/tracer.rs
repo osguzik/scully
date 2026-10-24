@@ -9,7 +9,7 @@ use nix::sys::wait::{WaitStatus, waitpid};
 use nix::unistd::Pid;
 
 use crate::regs::{self, RawSyscall};
-use crate::syscall_info;
+use crate::syscall_info::{self, ArgKind};
 
 /// Linux reserves return values from -1 to -MAX_ERRNO for errors
 const MAX_ERRNO: i64 = 4095;
@@ -91,16 +91,26 @@ pub fn run(child: &Child) -> io::Result<i32> {
 }
 
 fn format_call(call: &RawSyscall) -> String {
-    format!(
-        "{}({})",
-        syscall_info::name(call.nr),
-        format_args(&call.args)
-    )
+    format!("{}({})", syscall_info::name(call.nr), format_args(call))
 }
 
-fn format_args(args: &[u64; 6]) -> String {
-    let args: Vec<String> = args.iter().map(|arg| format!("{arg:#x}")).collect();
+fn format_args(syscall: &RawSyscall) -> String {
+    let args: Vec<String> = match syscall_info::arg_kinds(syscall.nr) {
+        Some(kinds) => kinds
+            .iter()
+            .zip(syscall.args)
+            .map(|(kind, val)| format_arg(*kind, val))
+            .collect(),
+        None => syscall.args.iter().map(|val| format!("{val:#x}")).collect(),
+    };
+
     args.join(", ")
+}
+
+fn format_arg(kind: ArgKind, val: u64) -> String {
+    match kind {
+        ArgKind::Hex | ArgKind::Str => format!("{val:#x}"),
+    }
 }
 
 fn format_ret(ret: i64) -> String {
