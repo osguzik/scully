@@ -58,7 +58,7 @@ pub fn run(child: &Child) -> io::Result<i32> {
                     Some(start) => {
                         eprintln!(
                             "{} = {}",
-                            format::call(pid, &start),
+                            format::call(pid, &start, Some(syscall.ret)),
                             format::ret(syscall.ret)
                         )
                     }
@@ -72,7 +72,7 @@ pub fn run(child: &Child) -> io::Result<i32> {
 
             WaitStatus::Exited(_, code) => {
                 if let Some(start) = entry {
-                    eprintln!("{} = ?", format::call(pid, &start));
+                    eprintln!("{} = ?", format::call(pid, &start, None));
                 }
                 eprintln!("+++ exited with {code} +++");
                 return Ok(code);
@@ -80,7 +80,7 @@ pub fn run(child: &Child) -> io::Result<i32> {
 
             WaitStatus::Signaled(_, sig, _) => {
                 if let Some(start) = entry {
-                    eprintln!("{} = ?", format::call(pid, &start));
+                    eprintln!("{} = ?", format::call(pid, &start, None));
                 }
                 eprintln!("+++ killed by {sig:?} +++");
                 return Ok(128 + sig as i32);

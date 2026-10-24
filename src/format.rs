@@ -11,8 +11,8 @@ const MAX_ERRNO: i64 = 4095;
 /// Buffers longer than MAX_BUF_SHOWN are cut off and end with "..."
 const MAX_BUF_SHOWN: usize = 32;
 
-pub fn call(pid: Pid, call: &RawSyscall) -> String {
-    format!("{}({})", syscall_info::name(call.nr), args(pid, call))
+pub fn call(pid: Pid, call: &RawSyscall, ret: Option<i64>) -> String {
+    format!("{}({})", syscall_info::name(call.nr), args(pid, call, ret))
 }
 
 pub fn ret(ret: i64) -> String {
@@ -24,12 +24,12 @@ pub fn ret(ret: i64) -> String {
     }
 }
 
-fn args(pid: Pid, syscall: &RawSyscall) -> String {
+fn args(pid: Pid, syscall: &RawSyscall, ret: Option<i64>) -> String {
     let args: Vec<String> = match syscall_info::arg_kinds(syscall.nr) {
         Some(kinds) => kinds
             .iter()
             .zip(syscall.args)
-            .map(|(kind, val)| arg(pid, *kind, val, syscall))
+            .map(|(kind, val)| arg(pid, *kind, val, syscall, ret))
             .collect(),
         None => syscall.args.iter().map(|val| format!("{val:#x}")).collect(),
     };
@@ -37,7 +37,7 @@ fn args(pid: Pid, syscall: &RawSyscall) -> String {
     args.join(", ")
 }
 
-fn arg(pid: Pid, kind: ArgKind, val: u64, syscall: &RawSyscall) -> String {
+fn arg(pid: Pid, kind: ArgKind, val: u64, syscall: &RawSyscall, ret: Option<i64>) -> String {
     match kind {
         ArgKind::Hex => format!("{val:#x}"),
         ArgKind::Int => (val as i32).to_string(),
@@ -47,6 +47,10 @@ fn arg(pid: Pid, kind: ArgKind, val: u64, syscall: &RawSyscall) -> String {
             None => format!("{val:#x}"),
         },
         ArgKind::Buf(count_idx) => buf(pid, val, syscall.args[count_idx]),
+        ArgKind::BufRet => match ret {
+            Some(count) if count >= 0 => buf(pid, val, count as u64),
+            _ => format!("{val:#x}"),
+        },
     }
 }
 

@@ -7,6 +7,7 @@ pub enum ArgKind {
     UInt,
     Str,
     Buf(usize),
+    BufRet,
 }
 
 pub fn name(nr: u64) -> String {
@@ -29,8 +30,8 @@ pub fn arg_kinds(nr: u64) -> Option<&'static [ArgKind]> {
         Sysno::ioctl => &[Int, Hex, Hex],
         Sysno::newfstatat => &[Int, Str, Hex, Hex],
         Sysno::openat => &[Int, Str, Hex, Hex],
-        Sysno::pread64 => &[Int, Hex, UInt, UInt],
-        Sysno::read => &[Int, Hex, UInt],
+        Sysno::pread64 => &[Int, BufRet, UInt, UInt],
+        Sysno::read => &[Int, BufRet, UInt],
         Sysno::write => &[Int, Buf(2), UInt],
 
         // memory
