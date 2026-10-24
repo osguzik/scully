@@ -8,12 +8,8 @@ use nix::sys::signal::Signal;
 use nix::sys::wait::{WaitStatus, waitpid};
 use nix::unistd::Pid;
 
-use crate::mem;
+use crate::format;
 use crate::regs::{self, RawSyscall};
-use crate::syscall_info::{self, ArgKind};
-
-/// Linux reserves return values from -1 to -MAX_ERRNO for errors
-const MAX_ERRNO: i64 = 4095;
 
 pub fn spawn_traced(cmd: &str, cmd_args: &[String]) -> io::Result<Child> {
     let mut command = Command::new(cmd);
@@ -60,7 +56,11 @@ pub fn run(child: &Child) -> io::Result<i32> {
                 match entry.take() {
                     None => entry = Some(syscall),
                     Some(start) => {
-                        eprintln!("{} = {}", format_call(pid, &start), format_ret(syscall.ret))
+                        eprintln!(
+                            "{} = {}",
+                            format::call(pid, &start),
+                            format::ret(syscall.ret)
+                        )
                     }
                 }
             }
@@ -72,7 +72,7 @@ pub fn run(child: &Child) -> io::Result<i32> {
 
             WaitStatus::Exited(_, code) => {
                 if let Some(start) = entry {
-                    eprintln!("{} = ?", format_call(pid, &start));
+                    eprintln!("{} = ?", format::call(pid, &start));
                 }
                 eprintln!("+++ exited with {code} +++");
                 return Ok(code);
@@ -80,7 +80,7 @@ pub fn run(child: &Child) -> io::Result<i32> {
 
             WaitStatus::Signaled(_, sig, _) => {
                 if let Some(start) = entry {
-                    eprintln!("{} = ?", format_call(pid, &start));
+                    eprintln!("{} = ?", format::call(pid, &start));
                 }
                 eprintln!("+++ killed by {sig:?} +++");
                 return Ok(128 + sig as i32);
@@ -88,41 +88,5 @@ pub fn run(child: &Child) -> io::Result<i32> {
 
             _ => {}
         }
-    }
-}
-
-fn format_call(pid: Pid, call: &RawSyscall) -> String {
-    format!("{}({})", syscall_info::name(call.nr), format_args(pid, call))
-}
-
-fn format_args(pid: Pid, syscall: &RawSyscall) -> String {
-    let args: Vec<String> = match syscall_info::arg_kinds(syscall.nr) {
-        Some(kinds) => kinds
-            .iter()
-            .zip(syscall.args)
-            .map(|(kind, val)| format_arg(pid, *kind, val))
-            .collect(),
-        None => syscall.args.iter().map(|val| format!("{val:#x}")).collect(),
-    };
-
-    args.join(", ")
-}
-
-fn format_arg(pid: Pid, kind: ArgKind, val: u64) -> String {
-    match kind {
-        ArgKind::Hex => format!("{val:#x}"),
-        ArgKind::Str => match mem::read_string(pid, val) {
-            Some(bytes) => format!("{:?}", String::from_utf8_lossy(&bytes)),
-            None => format!("{val:#x}"),
-        }
-    }
-}
-
-fn format_ret(ret: i64) -> String {
-    if (-MAX_ERRNO..0).contains(&ret) {
-        let errno = Errno::from_raw(-ret as i32);
-        format!("-1 {errno:?} ({})", errno.desc())
-    } else {
-        ret.to_string()
     }
 }

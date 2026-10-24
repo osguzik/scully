@@ -16,7 +16,7 @@ pub fn name(nr: u64) -> String {
 pub fn arg_kinds(nr: u64) -> Option<&'static [ArgKind]> {
     use ArgKind::*;
 
-    let formats: &'static [ArgKind] = match Sysno::new(nr as usize)? {
+    let kinds: &'static [ArgKind] = match Sysno::new(nr as usize)? {
         Sysno::openat => &[Hex, Str, Hex, Hex],
         Sysno::newfstatat => &[Hex, Str, Hex, Hex],
         Sysno::access => &[Str, Hex],
@@ -24,5 +24,5 @@ pub fn arg_kinds(nr: u64) -> Option<&'static [ArgKind]> {
         _ => return None,
     };
 
-    Some(formats)
+    Some(kinds)
 }

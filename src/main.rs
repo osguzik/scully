@@ -1,3 +1,4 @@
+mod format;
 mod mem;
 mod regs;
 mod syscall_info;
