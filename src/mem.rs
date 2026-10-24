@@ -23,3 +23,19 @@ pub fn read_string(pid: Pid, addr: u64) -> Option<Vec<u8>> {
 
     Some(bytes)
 }
+
+pub fn read_bytes(pid: Pid, addr: u64, count: usize) -> Option<Vec<u8>> {
+    let mut bytes = Vec::with_capacity(count);
+    let mut addr = addr;
+
+    while bytes.len() < count {
+        let word = ptrace::read(pid, addr as ptrace::AddressType).ok()?;
+
+        let take = (count - bytes.len()).min(8);
+        bytes.extend_from_slice(&word.to_ne_bytes()[..take]);
+
+        addr += 8;
+    }
+
+    Some(bytes)
+}
