@@ -3,7 +3,7 @@ use nix::unistd::Pid;
 
 use crate::mem;
 use crate::regs::RawSyscall;
-use crate::syscall_info::{self, ArgKind};
+use crate::syscall_info::{self, ArgKind, FlagNames};
 
 /// Linux reserves return values from -1 to -MAX_ERRNO for errors
 const MAX_ERRNO: i64 = 4095;
@@ -51,6 +51,7 @@ fn arg(pid: Pid, kind: ArgKind, val: u64, syscall: &RawSyscall, ret: Option<i64>
             Some(count) if count >= 0 => buf(pid, val, count as u64),
             _ => format!("{val:#x}"),
         },
+        ArgKind::Flags(known_flags) => flags(val, known_flags),
     }
 }
 
@@ -69,6 +70,25 @@ fn buf(pid: Pid, addr: u64, count: u64) -> String {
         }
         None => format!("{addr:#x}"),
     }
+}
+
+fn flags(val: u64, known_flags: FlagNames) -> String {
+    let val = val as u32;
+    let mut parts = Vec::new();
+    let mut unknown = val;
+
+    for &(bit, name) in known_flags {
+        if (val & bit) == bit {
+            parts.push(name.to_string());
+            unknown &= !bit;
+        }
+    }
+
+    if unknown != 0 || parts.is_empty() {
+        parts.push(format!("{unknown:#x}"));
+    }
+
+    parts.join("|")
 }
 
 fn quote(bytes: &[u8]) -> String {

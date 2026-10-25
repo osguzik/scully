@@ -1,4 +1,13 @@
+use nix::libc;
 use syscalls::Sysno;
+
+pub type FlagNames = &'static [(u32, &'static str)];
+
+pub const PROT_FLAGS: FlagNames = &[
+    (libc::PROT_READ as u32, "PROT_READ"),
+    (libc::PROT_WRITE as u32, "PROT_WRITE"),
+    (libc::PROT_EXEC as u32, "PROT_EXEC"),
+];
 
 #[derive(Clone, Copy)]
 pub enum ArgKind {
@@ -8,6 +17,7 @@ pub enum ArgKind {
     Str,
     Buf(usize),
     BufRet,
+    Flags(FlagNames)
 }
 
 pub fn name(nr: u64) -> String {
@@ -36,8 +46,8 @@ pub fn arg_kinds(nr: u64) -> Option<&'static [ArgKind]> {
 
         // memory
         Sysno::brk => &[Hex],
-        Sysno::mmap => &[Hex, UInt, Hex, Hex, Int, Hex],
-        Sysno::mprotect => &[Hex, UInt, Hex],
+        Sysno::mmap => &[Hex, UInt, Flags(PROT_FLAGS), Hex, Int, Hex],
+        Sysno::mprotect => &[Hex, UInt, Flags(PROT_FLAGS)],
         Sysno::munmap => &[Hex, UInt],
 
         // process
