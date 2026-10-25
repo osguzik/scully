@@ -1,9 +1,10 @@
 use nix::errno::Errno;
+use nix::libc;
 use nix::unistd::Pid;
 
 use crate::mem;
 use crate::regs::RawSyscall;
-use crate::syscall_info::{self, ArgKind, FlagNames};
+use crate::syscall_info::{self, ArgKind, FlagNames, OPEN_FLAGS};
 
 /// Linux reserves return values from -1 to -MAX_ERRNO for errors
 const MAX_ERRNO: i64 = 4095;
@@ -52,6 +53,7 @@ fn arg(pid: Pid, kind: ArgKind, val: u64, syscall: &RawSyscall, ret: Option<i64>
             _ => format!("{val:#x}"),
         },
         ArgKind::Flags(known_flags) => flags(val, known_flags),
+        ArgKind::OpenFlags => open_flags(val),
     }
 }
 
@@ -89,6 +91,25 @@ fn flags(val: u64, known_flags: FlagNames) -> String {
     }
 
     parts.join("|")
+}
+
+fn open_flags(val: u64) -> String {
+    let val = val as u32;
+    let acc_mode = val & libc::O_ACCMODE as u32;
+    let other_flags = val & !(libc::O_ACCMODE as u32);
+
+    let mode = match acc_mode as i32 {
+        libc::O_RDONLY => "O_RDONLY",
+        libc::O_WRONLY => "O_WRONLY",
+        libc::O_RDWR => "O_RDWR",
+        _ => "O_ACCMODE",
+    };
+
+    if other_flags == 0 {
+        mode.to_string()
+    } else {
+        format!("{mode}|{}", flags(other_flags as u64, OPEN_FLAGS))
+    }
 }
 
 fn quote(bytes: &[u8]) -> String {

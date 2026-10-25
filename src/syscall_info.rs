@@ -9,6 +9,37 @@ pub const PROT_FLAGS: FlagNames = &[
     (libc::PROT_EXEC as u32, "PROT_EXEC"),
 ];
 
+pub const MAP_FLAGS: FlagNames = &[
+    (libc::MAP_SHARED as u32, "MAP_SHARED"),
+    (libc::MAP_PRIVATE as u32, "MAP_PRIVATE"),
+    (libc::MAP_FIXED as u32, "MAP_FIXED"),
+    (libc::MAP_ANONYMOUS as u32, "MAP_ANONYMOUS"),
+    (libc::MAP_GROWSDOWN as u32, "MAP_GROWSDOWN"),
+    (libc::MAP_DENYWRITE as u32, "MAP_DENYWRITE"),
+    (libc::MAP_EXECUTABLE as u32, "MAP_EXECUTABLE"),
+    (libc::MAP_LOCKED as u32, "MAP_LOCKED"),
+    (libc::MAP_NORESERVE as u32, "MAP_NORESERVE"),
+    (libc::MAP_POPULATE as u32, "MAP_POPULATE"),
+    (libc::MAP_STACK as u32, "MAP_STACK"),
+    (libc::MAP_FIXED_NOREPLACE as u32, "MAP_FIXED_NOREPLACE"),
+];
+
+pub const OPEN_FLAGS: FlagNames = &[
+    (libc::O_CREAT as u32, "O_CREAT"),
+    (libc::O_EXCL as u32, "O_EXCL"),
+    (libc::O_NOCTTY as u32, "O_NOCTTY"),
+    (libc::O_TRUNC as u32, "O_TRUNC"),
+    (libc::O_APPEND as u32, "O_APPEND"),
+    (libc::O_NONBLOCK as u32, "O_NONBLOCK"),
+    (libc::O_DSYNC as u32, "O_DSYNC"),
+    (libc::O_DIRECT as u32, "O_DIRECT"),
+    (libc::O_DIRECTORY as u32, "O_DIRECTORY"),
+    (libc::O_NOFOLLOW as u32, "O_NOFOLLOW"),
+    (libc::O_NOATIME as u32, "O_NOATIME"),
+    (libc::O_CLOEXEC as u32, "O_CLOEXEC"),
+    (libc::O_PATH as u32, "O_PATH"),
+];
+
 #[derive(Clone, Copy)]
 pub enum ArgKind {
     Hex,
@@ -17,7 +48,8 @@ pub enum ArgKind {
     Str,
     Buf(usize),
     BufRet,
-    Flags(FlagNames)
+    Flags(FlagNames),
+    OpenFlags,
 }
 
 pub fn name(nr: u64) -> String {
@@ -39,14 +71,14 @@ pub fn arg_kinds(nr: u64) -> Option<&'static [ArgKind]> {
         Sysno::getdents64 => &[Int, Hex, UInt],
         Sysno::ioctl => &[Int, Hex, Hex],
         Sysno::newfstatat => &[Int, Str, Hex, Hex],
-        Sysno::openat => &[Int, Str, Hex, Hex],
+        Sysno::openat => &[Int, Str, OpenFlags, Hex],
         Sysno::pread64 => &[Int, BufRet, UInt, UInt],
         Sysno::read => &[Int, BufRet, UInt],
         Sysno::write => &[Int, Buf(2), UInt],
 
         // memory
         Sysno::brk => &[Hex],
-        Sysno::mmap => &[Hex, UInt, Flags(PROT_FLAGS), Hex, Int, Hex],
+        Sysno::mmap => &[Hex, UInt, Flags(PROT_FLAGS), Flags(MAP_FLAGS), Int, Hex],
         Sysno::mprotect => &[Hex, UInt, Flags(PROT_FLAGS)],
         Sysno::munmap => &[Hex, UInt],
 
