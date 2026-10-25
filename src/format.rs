@@ -43,7 +43,7 @@ fn arg(pid: Pid, kind: ArgKind, val: u64, syscall: &RawSyscall, ret: Option<i64>
         ArgKind::Int => (val as i32).to_string(),
         ArgKind::UInt => val.to_string(),
         ArgKind::Str => match mem::read_string(pid, val) {
-            Some(bytes) => string_quote(&bytes),
+            Some(bytes) => quote(&bytes),
             None => format!("{val:#x}"),
         },
         ArgKind::Buf(count_idx) => buf(pid, val, syscall.args[count_idx]),
@@ -60,7 +60,7 @@ fn buf(pid: Pid, addr: u64, count: u64) -> String {
 
     match mem::read_bytes(pid, addr, shown_count) {
         Some(bytes) => {
-            let text = string_quote(&bytes);
+            let text = quote(&bytes);
             if shown_count < count {
                 format!("{text}...")
             } else {
@@ -71,6 +71,6 @@ fn buf(pid: Pid, addr: u64, count: u64) -> String {
     }
 }
 
-fn string_quote(bytes: &[u8]) -> String {
+fn quote(bytes: &[u8]) -> String {
     format!("\"{}\"", bytes.escape_ascii())
 }
