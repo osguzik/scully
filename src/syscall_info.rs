@@ -52,6 +52,7 @@ pub enum ArgKind {
     BufRet,
     Flags(FlagNames),
     OpenFlags,
+    Mode,
 }
 
 pub fn name(nr: u64) -> String {
@@ -73,7 +74,7 @@ pub fn arg_kinds(nr: u64) -> Option<&'static [ArgKind]> {
         Sysno::getdents64 => &[Int, Ptr, UInt],
         Sysno::ioctl => &[Int, Hex, Hex],
         Sysno::newfstatat => &[DirFd, Str, Ptr, Hex],
-        Sysno::openat => &[DirFd, Str, OpenFlags, Hex],
+        Sysno::openat => &[DirFd, Str, OpenFlags, Mode],
         Sysno::pread64 => &[Int, BufRet, UInt, UInt],
         Sysno::read => &[Int, BufRet, UInt],
         Sysno::write => &[Int, Buf(2), UInt],

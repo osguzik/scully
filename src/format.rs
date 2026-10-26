@@ -29,15 +29,34 @@ pub fn ret(nr: u64, val: i64) -> String {
 
 fn args(pid: Pid, syscall: &RawSyscall, ret: Option<i64>) -> String {
     let args: Vec<String> = match syscall_info::arg_kinds(syscall.nr) {
-        Some(kinds) => kinds
-            .iter()
-            .zip(syscall.args)
-            .map(|(kind, val)| arg(pid, *kind, val, syscall, ret))
-            .collect(),
+        Some(kinds) => {
+            let kinds = if mode_unused(syscall) {
+                &kinds[..3]
+            } else {
+                kinds
+            };
+
+            kinds
+                .iter()
+                .zip(syscall.args)
+                .map(|(kind, val)| arg(pid, *kind, val, syscall, ret))
+                .collect()
+        }
         None => syscall.args.iter().map(|val| format!("{val:#x}")).collect(),
     };
 
     args.join(", ")
+}
+
+fn mode_unused(syscall: &RawSyscall) -> bool {
+    if syscall.nr != libc::SYS_openat as u64 {
+        return false;
+    }
+
+    let flags = syscall.args[2] as i32;
+    let can_create = (flags & libc::O_CREAT) != 0 || (flags & libc::O_TMPFILE) == libc::O_TMPFILE;
+
+    !can_create
 }
 
 fn arg(pid: Pid, kind: ArgKind, val: u64, syscall: &RawSyscall, ret: Option<i64>) -> String {
@@ -54,7 +73,7 @@ fn arg(pid: Pid, kind: ArgKind, val: u64, syscall: &RawSyscall, ret: Option<i64>
         ArgKind::Str => match mem::read_string(pid, val) {
             Some(bytes) => quote(&bytes),
             None => format!("{val:#x}"),
-        }
+        },
         ArgKind::Ptr => {
             if val == 0 {
                 "NULL".to_string()
@@ -74,9 +93,10 @@ fn arg(pid: Pid, kind: ArgKind, val: u64, syscall: &RawSyscall, ret: Option<i64>
         ArgKind::BufRet => match ret {
             Some(count) if count >= 0 => buf(pid, val, count as u64),
             _ => format!("{val:#x}"),
-        }
+        },
         ArgKind::Flags(known_flags) => flags(val, known_flags),
         ArgKind::OpenFlags => open_flags(val),
+        ArgKind::Mode => format!("0{:o}", val as u32),
     }
 }
 
