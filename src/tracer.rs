@@ -23,7 +23,7 @@ pub fn spawn_traced(cmd: &str, cmd_args: &[String]) -> io::Result<Child> {
     command.spawn()
 }
 
-pub fn run(child: &Child) -> io::Result<i32> {
+pub fn run(child: &Child, stats_only: bool) -> io::Result<i32> {
     let pid = Pid::from_raw(child.id() as i32);
 
     match waitpid(pid, None)? {
@@ -56,33 +56,41 @@ pub fn run(child: &Child) -> io::Result<i32> {
                 match entry.take() {
                     None => entry = Some(syscall),
                     Some(start) => {
-                        eprintln!(
-                            "{} = {}",
-                            format::call(pid, &start, Some(syscall.ret)),
-                            format::ret(start.nr, syscall.ret)
-                        )
+                        if !stats_only {
+                            eprintln!(
+                                "{} = {}",
+                                format::call(pid, &start, Some(syscall.ret)),
+                                format::ret(start.nr, syscall.ret)
+                            )
+                        }
                     }
                 }
             }
 
             WaitStatus::Stopped(_, sig) => {
-                eprintln!("--- {sig:?} ---");
+                if !stats_only {
+                    eprintln!("--- {sig:?} ---");
+                }
                 pending = Some(sig);
             }
 
             WaitStatus::Exited(_, code) => {
-                if let Some(start) = entry {
-                    eprintln!("{} = ?", format::call(pid, &start, None));
+                if !stats_only {
+                    if let Some(start) = entry {
+                        eprintln!("{} = ?", format::call(pid, &start, None));
+                    }
+                    eprintln!("+++ exited with {code} +++");
                 }
-                eprintln!("+++ exited with {code} +++");
                 return Ok(code);
             }
 
             WaitStatus::Signaled(_, sig, _) => {
-                if let Some(start) = entry {
-                    eprintln!("{} = ?", format::call(pid, &start, None));
+                if !stats_only {
+                    if let Some(start) = entry {
+                        eprintln!("{} = ?", format::call(pid, &start, None));
+                    }
+                    eprintln!("+++ killed by {sig:?} +++");
                 }
-                eprintln!("+++ killed by {sig:?} +++");
                 return Ok(128 + sig as i32);
             }
 
