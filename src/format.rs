@@ -40,18 +40,31 @@ fn args(pid: Pid, syscall: &RawSyscall, ret: Option<i64>) -> String {
 
 fn arg(pid: Pid, kind: ArgKind, val: u64, syscall: &RawSyscall, ret: Option<i64>) -> String {
     match kind {
-        ArgKind::Hex => format!("{val:#x}"),
+        ArgKind::Hex => {
+            if val == 0 {
+                "0".to_string()
+            } else {
+                format!("{val:#x}")
+            }
+        }
         ArgKind::Int => (val as i32).to_string(),
         ArgKind::UInt => val.to_string(),
         ArgKind::Str => match mem::read_string(pid, val) {
             Some(bytes) => quote(&bytes),
             None => format!("{val:#x}"),
-        },
+        }
+        ArgKind::Ptr => {
+            if val == 0 {
+                "NULL".to_string()
+            } else {
+                format!("{val:#x}")
+            }
+        }
         ArgKind::Buf(count_idx) => buf(pid, val, syscall.args[count_idx]),
         ArgKind::BufRet => match ret {
             Some(count) if count >= 0 => buf(pid, val, count as u64),
             _ => format!("{val:#x}"),
-        },
+        }
         ArgKind::Flags(known_flags) => flags(val, known_flags),
         ArgKind::OpenFlags => open_flags(val),
     }
