@@ -62,6 +62,14 @@ fn arg(pid: Pid, kind: ArgKind, val: u64, syscall: &RawSyscall, ret: Option<i64>
                 format!("{val:#x}")
             }
         }
+        ArgKind::DirFd => {
+            let fd = val as i32;
+            if fd == libc::AT_FDCWD {
+                "AT_FDCWD".to_string()
+            } else {
+                fd.to_string()
+            }
+        }
         ArgKind::Buf(count_idx) => buf(pid, val, syscall.args[count_idx]),
         ArgKind::BufRet => match ret {
             Some(count) if count >= 0 => buf(pid, val, count as u64),
