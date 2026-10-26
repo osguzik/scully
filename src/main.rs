@@ -1,6 +1,7 @@
 mod format;
 mod mem;
 mod regs;
+mod stats_table;
 mod syscall_info;
 mod tracer;
 

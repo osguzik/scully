@@ -10,6 +10,7 @@ use nix::unistd::Pid;
 
 use crate::format;
 use crate::regs::{self, RawSyscall};
+use crate::stats_table::StatsTable;
 
 pub fn spawn_traced(cmd: &str, cmd_args: &[String]) -> io::Result<Child> {
     let mut command = Command::new(cmd);
@@ -42,6 +43,7 @@ pub fn run(child: &Child, stats_only: bool) -> io::Result<i32> {
 
     let mut entry: Option<RawSyscall> = None;
     let mut pending: Option<Signal> = None;
+    let mut stats = StatsTable::default();
 
     loop {
         match ptrace::syscall(pid, pending.take()) {
@@ -56,7 +58,9 @@ pub fn run(child: &Child, stats_only: bool) -> io::Result<i32> {
                 match entry.take() {
                     None => entry = Some(syscall),
                     Some(start) => {
-                        if !stats_only {
+                        if stats_only {
+                            stats.add_syscall(start.nr);
+                        } else {
                             eprintln!(
                                 "{} = {}",
                                 format::call(pid, &start, Some(syscall.ret)),
@@ -75,7 +79,9 @@ pub fn run(child: &Child, stats_only: bool) -> io::Result<i32> {
             }
 
             WaitStatus::Exited(_, code) => {
-                if !stats_only {
+                if stats_only {
+                    stats.print_table();
+                } else {
                     if let Some(start) = entry {
                         eprintln!("{} = ?", format::call(pid, &start, None));
                     }
@@ -85,7 +91,9 @@ pub fn run(child: &Child, stats_only: bool) -> io::Result<i32> {
             }
 
             WaitStatus::Signaled(_, sig, _) => {
-                if !stats_only {
+                if stats_only {
+                    stats.print_table();
+                } else {
                     if let Some(start) = entry {
                         eprintln!("{} = ?", format::call(pid, &start, None));
                     }
