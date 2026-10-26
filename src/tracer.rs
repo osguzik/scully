@@ -59,7 +59,7 @@ pub fn run(child: &Child) -> io::Result<i32> {
                         eprintln!(
                             "{} = {}",
                             format::call(pid, &start, Some(syscall.ret)),
-                            format::ret(syscall.ret)
+                            format::ret(start.nr, syscall.ret)
                         )
                     }
                 }

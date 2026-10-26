@@ -16,12 +16,14 @@ pub fn call(pid: Pid, call: &RawSyscall, ret: Option<i64>) -> String {
     format!("{}({})", syscall_info::name(call.nr), args(pid, call, ret))
 }
 
-pub fn ret(ret: i64) -> String {
-    if (-MAX_ERRNO..0).contains(&ret) {
-        let errno = Errno::from_raw(-ret as i32);
+pub fn ret(nr: u64, val: i64) -> String {
+    if (-MAX_ERRNO..0).contains(&val) {
+        let errno = Errno::from_raw(-val as i32);
         format!("-1 {errno:?} ({})", errno.desc())
+    } else if syscall_info::returns_ptr(nr) {
+        format!("{val:#x}")
     } else {
-        ret.to_string()
+        val.to_string()
     }
 }
 

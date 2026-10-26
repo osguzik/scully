@@ -97,3 +97,7 @@ pub fn arg_kinds(nr: u64) -> Option<&'static [ArgKind]> {
 
     Some(kinds)
 }
+
+pub fn returns_ptr(nr: u64) -> bool {
+    matches!(Sysno::new(nr as usize), Some(Sysno::mmap | Sysno::brk))
+}
