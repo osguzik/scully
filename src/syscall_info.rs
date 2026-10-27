@@ -1,6 +1,9 @@
 use nix::libc;
 use syscalls::Sysno;
 
+/// Linux reserves return values from -1 to -MAX_ERRNO for errors
+const MAX_ERRNO: i64 = 4095;
+
 pub type FlagNames = &'static [(u32, &'static str)];
 
 pub const PROT_FLAGS: FlagNames = &[
@@ -102,4 +105,8 @@ pub fn arg_kinds(nr: u64) -> Option<&'static [ArgKind]> {
 
 pub fn returns_ptr(nr: u64) -> bool {
     matches!(Sysno::new(nr as usize), Some(Sysno::mmap | Sysno::brk))
+}
+
+pub fn is_error(ret: i64) -> bool {
+    (-MAX_ERRNO..0).contains(&ret)
 }

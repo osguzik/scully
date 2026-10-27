@@ -59,7 +59,7 @@ pub fn run(child: &Child, stats_only: bool) -> io::Result<i32> {
                     None => entry = Some(syscall),
                     Some(start) => {
                         if stats_only {
-                            stats.add_syscall(start.nr);
+                            stats.add_syscall(start.nr, syscall.ret);
                         } else {
                             eprintln!(
                                 "{} = {}",

@@ -6,9 +6,6 @@ use crate::mem;
 use crate::regs::RawSyscall;
 use crate::syscall_info::{self, ArgKind, FlagNames, OPEN_FLAGS};
 
-/// Linux reserves return values from -1 to -MAX_ERRNO for errors
-const MAX_ERRNO: i64 = 4095;
-
 /// Buffers longer than MAX_BUF_SHOWN are cut off and end with "..."
 const MAX_BUF_SHOWN: usize = 32;
 
@@ -17,7 +14,7 @@ pub fn call(pid: Pid, call: &RawSyscall, ret: Option<i64>) -> String {
 }
 
 pub fn ret(nr: u64, val: i64) -> String {
-    if (-MAX_ERRNO..0).contains(&val) {
+    if syscall_info::is_error(val) {
         let errno = Errno::from_raw(-val as i32);
         format!("-1 {errno:?} ({})", errno.desc())
     } else if syscall_info::returns_ptr(nr) {
