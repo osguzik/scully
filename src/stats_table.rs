@@ -2,6 +2,9 @@ use std::collections::HashMap;
 
 use crate::syscall_info;
 
+const COUNT_WIDTH: usize = 9;
+const NAME_WIDTH: usize = 16;
+
 #[derive(Default)]
 struct SyscallStats {
     calls: u64,
@@ -31,8 +34,33 @@ impl StatsTable {
 
         rows.sort_by(|(name_a, a), (name_b, b)| b.calls.cmp(&a.calls).then(name_a.cmp(name_b)));
 
+        let sep = format!(
+            "{} {} {}",
+            "-".repeat(COUNT_WIDTH),
+            "-".repeat(COUNT_WIDTH),
+            "-".repeat(NAME_WIDTH)
+        );
+
+        eprintln!(
+            "{:>COUNT_WIDTH$} {:>COUNT_WIDTH$} syscall",
+            "calls", "errors"
+        );
+        eprintln!("{sep}");
+
         for (name, stats) in &rows {
-            eprintln!("{:>9} {:>9} {name}", stats.calls, stats.errors);
+            eprintln!(
+                "{:>COUNT_WIDTH$} {:>COUNT_WIDTH$} {name}",
+                stats.calls,
+                errors_cell(stats.errors)
+            );
         }
+    }
+}
+
+fn errors_cell(errors: u64) -> String {
+    if errors == 0 {
+        String::new()
+    } else {
+        errors.to_string()
     }
 }
