@@ -88,8 +88,8 @@ fn arg(pid: Pid, kind: ArgKind, val: u64, syscall: &RawSyscall, ret: Option<i64>
             Some(count) if count >= 0 => buf(pid, val, count as u64),
             _ => format!("{val:#x}"),
         },
-        ArgKind::Flags(known_flags) => flags(val, known_flags),
-        ArgKind::OpenFlags => open_flags(val),
+        ArgKind::Flags(known_flags) => flags(val as u32, known_flags),
+        ArgKind::OpenFlags => open_flags(val as u32),
         ArgKind::Mode => format!("0{:o}", val as u32),
     }
 }
@@ -119,8 +119,7 @@ fn buf(pid: Pid, addr: u64, count: u64) -> String {
     }
 }
 
-fn flags(val: u64, known_flags: FlagNames) -> String {
-    let val = val as u32;
+fn flags(val: u32, known_flags: FlagNames) -> String {
     let mut parts = Vec::new();
     let mut unknown = val;
 
@@ -138,8 +137,7 @@ fn flags(val: u64, known_flags: FlagNames) -> String {
     parts.join("|")
 }
 
-fn open_flags(val: u64) -> String {
-    let val = val as u32;
+fn open_flags(val: u32) -> String {
     let acc_mode = val & libc::O_ACCMODE as u32;
     let other_flags = val & !(libc::O_ACCMODE as u32);
 
@@ -153,7 +151,7 @@ fn open_flags(val: u64) -> String {
     if other_flags == 0 {
         mode.to_string()
     } else {
-        format!("{mode}|{}", flags(other_flags as u64, OPEN_FLAGS))
+        format!("{mode}|{}", flags(other_flags, OPEN_FLAGS))
     }
 }
 
