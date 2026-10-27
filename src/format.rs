@@ -42,7 +42,7 @@ fn args(pid: Pid, syscall: &RawSyscall, ret: Option<i64>) -> String {
                 .map(|(kind, val)| arg(pid, *kind, val, syscall, ret))
                 .collect()
         }
-        None => syscall.args.iter().map(|val| format!("{val:#x}")).collect(),
+        None => syscall.args.iter().map(|val| hex(*val)).collect(),
     };
 
     args.join(", ")
@@ -61,13 +61,7 @@ fn mode_unused(syscall: &RawSyscall) -> bool {
 
 fn arg(pid: Pid, kind: ArgKind, val: u64, syscall: &RawSyscall, ret: Option<i64>) -> String {
     match kind {
-        ArgKind::Hex => {
-            if val == 0 {
-                "0".to_string()
-            } else {
-                format!("{val:#x}")
-            }
-        }
+        ArgKind::Hex => hex(val),
         ArgKind::Int => (val as i32).to_string(),
         ArgKind::UInt => val.to_string(),
         ArgKind::Str => match mem::read_string(pid, val) {
@@ -97,6 +91,14 @@ fn arg(pid: Pid, kind: ArgKind, val: u64, syscall: &RawSyscall, ret: Option<i64>
         ArgKind::Flags(known_flags) => flags(val, known_flags),
         ArgKind::OpenFlags => open_flags(val),
         ArgKind::Mode => format!("0{:o}", val as u32),
+    }
+}
+
+fn hex(val: u64) -> String {
+    if val == 0 {
+        "0".to_string()
+    } else {
+        format!("{val:#x}")
     }
 }
 
