@@ -47,13 +47,25 @@ impl StatsTable {
         );
         eprintln!("{sep}");
 
+        let mut total_calls = 0;
+        let mut total_errors = 0;
+
         for (name, stats) in &rows {
             eprintln!(
                 "{:>COUNT_WIDTH$} {:>COUNT_WIDTH$} {name}",
                 stats.calls,
                 errors_cell(stats.errors)
             );
+            total_calls += stats.calls;
+            total_errors += stats.errors;
         }
+
+        eprintln!("{sep}");
+        eprintln!(
+            "{:>COUNT_WIDTH$} {:>COUNT_WIDTH$} total",
+            total_calls,
+            errors_cell(total_errors)
+        )
     }
 }
 
