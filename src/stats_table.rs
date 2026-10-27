@@ -23,13 +23,16 @@ impl StatsTable {
     }
 
     pub fn print_table(&self) {
-        for (nr, stats) in &self.syscalls {
-            eprintln!(
-                "{:>9} {:>9} {}",
-                stats.calls,
-                stats.errors,
-                syscall_info::name(*nr)
-            );
+        let mut rows: Vec<(String, &SyscallStats)> = self
+            .syscalls
+            .iter()
+            .map(|(nr, stats)| (syscall_info::name(*nr), stats))
+            .collect();
+
+        rows.sort_by(|(name_a, a), (name_b, b)| b.calls.cmp(&a.calls).then(name_a.cmp(name_b)));
+
+        for (name, stats) in &rows {
+            eprintln!("{:>9} {:>9} {name}", stats.calls, stats.errors);
         }
     }
 }
