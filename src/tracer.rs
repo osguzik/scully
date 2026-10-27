@@ -1,6 +1,7 @@
 use std::io;
 use std::os::unix::process::CommandExt;
 use std::process::{Child, Command};
+use std::time::Instant;
 
 use nix::errno::Errno;
 use nix::sys::ptrace::{self, Options};
@@ -42,6 +43,7 @@ pub fn run(child: &Child, stats_only: bool) -> io::Result<i32> {
     )?;
 
     let mut entry: Option<RawSyscall> = None;
+    let mut entry_time = Instant::now();
     let mut pending: Option<Signal> = None;
     let mut stats = StatsTable::default();
 
@@ -56,10 +58,13 @@ pub fn run(child: &Child, stats_only: bool) -> io::Result<i32> {
                 let syscall = regs::read(pid)?;
 
                 match entry.take() {
-                    None => entry = Some(syscall),
+                    None => {
+                        entry = Some(syscall);
+                        entry_time = Instant::now();
+                    }
                     Some(start) => {
                         if stats_only {
-                            stats.add_syscall(start.nr, syscall.ret);
+                            stats.add_syscall(start.nr, syscall.ret, entry_time.elapsed());
                         } else {
                             eprintln!(
                                 "{} = {}",
