@@ -63,7 +63,7 @@ impl StatsTable {
         for (name, stats) in &rows {
             eprintln!(
                 "{:>PERCENT_TIME_WIDTH$.2} {:>TIME_WIDTH$.6} {:>TIME_WIDTH$} {:>COUNT_WIDTH$} {:>COUNT_WIDTH$} {name}",
-                time_percent(stats.time, total_time),
+                percent_time(stats.time, total_time),
                 stats.time.as_secs_f64(),
                 stats.time.as_micros() / u128::from(stats.calls),
                 stats.calls,
@@ -85,7 +85,7 @@ impl StatsTable {
     }
 }
 
-fn time_percent(part: Duration, total: Duration) -> f64 {
+fn percent_time(part: Duration, total: Duration) -> f64 {
     if total.is_zero() {
         0.0
     } else {
